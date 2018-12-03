@@ -21,6 +21,7 @@ namespace Bot.Builder.Redis.Storage
         private readonly RedisStorageOptions redisStorageOptions;
 
         private CSRedisClient redisClient;
+        private static string prefix = String.Empty;
 
         public RedisStorage(RedisStorageOptions redisStorageOptions)
         {
@@ -51,11 +52,11 @@ namespace Bot.Builder.Redis.Storage
 
             foreach (var k in ks)
             {
-                var items = await redisClient.SMembersAsync<DocumentItem>(k).ConfigureAwait(false);
+                var items = await redisClient.SMembersAsync<DocumentItem>(k.Replace(prefix, "")).ConfigureAwait(false);
                 var documentItems = items
                     .Where(i => keys.Contains(i.RealId))
                     .ToArray();
-                await redisClient.SRemAsync(k, documentItems).ConfigureAwait(false);
+                await redisClient.SRemAsync(k.Replace(prefix, ""), documentItems).ConfigureAwait(false);
             }
         }
 
@@ -72,7 +73,7 @@ namespace Bot.Builder.Redis.Storage
 
             foreach (var k in ks)
             {
-                var items = await redisClient.SMembersAsync<DocumentItem>(k).ConfigureAwait(false);
+                var items = await redisClient.SMembersAsync<DocumentItem>(k.Replace(prefix, "")).ConfigureAwait(false);
                 foreach (var key in keys)
                 {
                     var doc = items
@@ -125,6 +126,8 @@ namespace Bot.Builder.Redis.Storage
             catch
             {
                 RedisHelper.Initialization(new CSRedisClient(redisStorageOptions.RedisConnectionString));
+
+                prefix = redisStorageOptions.RedisConnectionString.Split(',').First(x => x.StartsWith("prefix=")).Split('=')[1];
                 redisClient = RedisHelper.Instance;
             }
             
